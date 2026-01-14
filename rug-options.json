@@ -1,0 +1,141 @@
+{
+  "accordions": [
+    {
+      "id": "rooms",
+      "title": "Rooms",
+      "icon": "fas fa-home",
+      "type": "radio",
+      "options": [
+        "Living room",
+        "Bedroom",
+        "Dining area",
+        "Office or studio",
+        "Hotel or public space",
+        "Wall or art rug"
+      ],
+      "hasCustomInput": true,
+      "customInputLabel": "Others (specify):",
+      "customInputId": "other-room",
+      "customInputPlaceholder": "Enter other room type...",
+      "initiallyOpen": true
+    },
+    {
+      "id": "design-style",
+      "title": "Design Style",
+      "icon": "fas fa-palette",
+      "type": "radio",
+      "options": [
+        "Abstract",
+        "Artistic",
+        "Animal",
+        "Border",
+        "Circle",
+        "Contemporary",
+        "Damask",
+        "Floral",
+        "Geometric",
+        "Mandala",
+        "Mirror",
+        "Modern",
+        "Ombre/Gradient",
+        "Organic",
+        "Oriental",
+        "Ornamental",
+        "Stripes/lines",
+        "Traditional",
+        "Transitional",
+        "Tribal"
+      ],
+      "hasCustomInput": false,
+      "initiallyOpen": false
+    },
+    {
+      "id": "size",
+      "title": "Size",
+      "icon": "fas fa-ruler-combined",
+      "type": "radio",
+      "options": [
+        "900 X 1200",
+        "120 X 170 cm",
+        "160 X 230 cm",
+        "200 X 290 cm",
+        "240 X 340 cm",
+        "Small (up to 120cm)",
+        "Medium (120-200cm)",
+        "Large (over 200cm)"
+      ],
+      "hasCustomInput": true,
+      "customInputLabel": "Custom Size:",
+      "customInputId": "custom-size",
+      "customInputPlaceholder": "Enter custom dimensions (e.g., 150cm x 200cm)",
+      "initiallyOpen": false
+    },
+    {
+      "id": "shape",
+      "title": "Shape",
+      "icon": "fas fa-shapes",
+      "type": "radio",
+      "options": [
+        "Rectangle",
+        "Square",
+        "Round",
+        "Runner",
+        "Irregular or organic shape"
+      ],
+      "hasCustomInput": true,
+      "customInputLabel": "Other Shape:",
+      "customInputId": "other-shape",
+      "customInputPlaceholder": "Enter other rug shape...",
+      "initiallyOpen": false
+    },
+    {
+      "id": "design-details",
+      "title": "Design Details",
+      "icon": "fas fa-info-circle",
+      "type": "radio",
+      "options": [
+        "Highly detailed and intricate",
+        "Medium detail and balanced",
+        "Low detail and minimalist"
+      ],
+      "hasCustomInput": false,
+      "initiallyOpen": false
+    },
+    {
+      "id": "color",
+      "title": "Color",
+      "icon": "fas fa-fill-drip",
+      "type": "radio",
+      "options": [
+        "Neutrals",
+        "Warm tones",
+        "Cool tones",
+        "Monochrome",
+        "High contrast",
+        "Soft and muted",
+        "Natural and undyed look"
+      ],
+      "hasCustomInput": true,
+      "customInputLabel": "Custom Color:",
+      "customInputId": "custom-color",
+      "customInputPlaceholder": "Enter custom color preference...",
+      "initiallyOpen": false
+    },
+    {
+      "id": "mood",
+      "title": "Mood",
+      "icon": "fas fa-heart",
+      "type": "radio",
+      "options": [
+        "Calm and subtle",
+        "Bold and expressive",
+        "Warm and cozy",
+        "Fresh and light",
+        "Rich and luxurious",
+        "Earthy and natural"
+      ],
+      "hasCustomInput": false,
+      "initiallyOpen": false
+    }
+  ]
+}

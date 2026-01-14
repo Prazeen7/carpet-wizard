@@ -1,0 +1,25 @@
+# Virtual environments
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Project-specific folders
+.claude/
+flux/
+
+# Build / package info
+carpet_wizard.egg-info/
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
