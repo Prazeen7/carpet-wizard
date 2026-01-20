@@ -1,0 +1,88 @@
+{
+  "styleConfigurations": {
+    "Abstract": {
+      "fluidStyles": [
+        "liquid paint pour",
+        "water splash",
+        "ink in water",
+        "oil and water mix",
+        "melting wax",
+        "dripping paint",
+        "flowing resin",
+        "marble swirl",
+        "smoke fluid",
+        "liquid metal flow",
+        "honey drip",
+        "milk splash",
+        "acrylic pour",
+        "watercolor bleed",
+        "molten glass",
+        "flowing lava",
+        "liquid soap swirl",
+        "cream mixing",
+        "paint drizzle",
+        "fluid waves"
+      ],
+      "composition": [
+        "centrally composed",
+        "asymmetrically arranged",
+        "flowing motion",
+        "overlapping elements",
+        "bottom-up flow",
+        "top-down cascade",
+        "edge-to-edge filling",
+        "floating in space",
+        "layered depth"
+      ],
+      "patterns": [
+        "liquid marble effect",
+        "rippling water surface",
+        "dripping paint trails",
+        "swirling vortex",
+        "flowing streams",
+        "wave pattern",
+        "splash dispersion",
+        "organic flow lines",
+        "turbulent mixing"
+      ],
+      "density": [
+        "sparse with negative space",
+        "moderately filled",
+        "densely packed",
+        "gradient from sparse to dense",
+        "clustered groupings"
+      ],
+      "scale": [
+        "uniform scale",
+        "gradually increasing scale",
+        "contrasting large and small",
+        "varied organic sizing",
+        "multiple size layers"
+      ],
+      "orientation": [
+        "horizontal direction",
+        "vertical direction",
+        "45-degree angle",
+        "radiating from center",
+        "random rotation"
+      ],
+      "spacing": [
+        "tight uniform gaps",
+        "wide spacing",
+        "organic irregular spacing",
+        "flowing continuous"
+      ],
+      "arrangement": [
+        "organic natural flow",
+        "anchored to edges",
+        "all-over pattern",
+        "bleeding off edges",
+        "liquid pouring downward",
+        "splash radiating outward",
+        "pooling at bottom",
+        "flowing diagonally",
+        "cascading layers"
+      ]
+    }
+  }
+}

@@ -315,30 +315,30 @@ def generate_prompt_from_selections(selections, session_id=None, style_configs=N
     """Convert user selections into a detailed prompt for FLUX.1-schnell
 
     Step order matches rug-options.json accordions:
-    - step1 = rooms
-    - step2 = design-style
-    - step3 = size
-    - step4 = shape
+    - step1 = shape
+    - step2 = size
+    - step3 = color
+    - step4 = design-style
     - step5 = design-details
-    - step6 = color
+    - step6 = rooms
     """
 
-    # Step 1: Room/Location
-    room = selections.get('step1', 'indoor space')
+    # Step 1: Shape
+    shape = selections.get('step1', 'Rectangle').lower()
 
-    # Step 2: Design Style
-    style = selections.get('step2', 'custom')
+    # Step 2: Size (used for image dimensions, not in prompt)
 
-    # Step 3: Size (used for image dimensions, not in prompt)
+    # Step 3: Color
+    color = selections.get('step3', '')
 
-    # Step 4: Shape
-    shape = selections.get('step4', 'Rectangle').lower()
+    # Step 4: Design Style
+    style = selections.get('step4', 'custom')
 
     # Step 5: Design Details
     detail = selections.get('step5', '')
 
-    # Step 6: Color
-    color = selections.get('step6', '')
+    # Step 6: Room/Location
+    room = selections.get('step6', 'indoor space')
 
     # Handle Abstract style with randomization
     if style == 'Abstract' and session_id and style_configs:
@@ -1634,8 +1634,8 @@ HTML_CONTENT = """<!DOCTYPE html>
             prevBtn.disabled = currentStep === 0;
             nextBtn.disabled = currentStep === stepData.length - 1;
 
-            // Only require step2 (Design Style) to be selected
-            const designStyleSelected = stepData.length > 1 && userChoices[stepData[1].id];
+            // Only require step4 (Design Style) to be selected
+            const designStyleSelected = stepData.length > 3 && userChoices[stepData[3].id];
             generateBtn.disabled = !designStyleSelected;
         }
 
@@ -2021,8 +2021,8 @@ def web_app():
         else:
             user_sessions[session_id] = selections
 
-        # Only require step2 (Design Style) to be selected
-        if not selections.get('step2'):
+        # Only require step4 (Design Style) to be selected
+        if not selections.get('step4'):
             return jsonify({"error": "Please select a Design Style before generating"}), 400
 
         # Load style configurations from JSON
@@ -2039,7 +2039,7 @@ def web_app():
 
         # Get tracking info for Abstract style
         tracking_info = {}
-        if selections.get('step2') == 'Abstract' and session_id in user_sessions:
+        if selections.get('step4') == 'Abstract' and session_id in user_sessions:
             tracking = user_sessions[session_id].get('abstract_params_tracking', {})
             if tracking:
                 tracking_info = {
@@ -2073,8 +2073,8 @@ def web_app():
             # Store selections for this session
             user_sessions[session_id] = selections
 
-        # Only require step2 (Design Style) to be selected
-        if not selections.get('step2'):
+        # Only require step4 (Design Style) to be selected
+        if not selections.get('step4'):
             return jsonify({"error": "Please select a Design Style before generating"}), 400
 
         # Use custom prompt if provided, otherwise generate from selections
@@ -2095,8 +2095,8 @@ def web_app():
             prompt = generate_prompt_from_selections(selections, session_id, style_configs)
 
         # Get dimensions from size and shape selections
-        size_selection = selections.get('step3', '')
-        shape_selection = selections.get('step4', '')
+        size_selection = selections.get('step2', '')
+        shape_selection = selections.get('step1', '')
         width, height = get_dimensions_from_selection(size_selection, shape_selection)
 
         # Call Flux model synchronously and wait for result
@@ -2149,12 +2149,12 @@ def web_app():
 
         # Step labels for better readability
         step_labels = {
-            'step1': 'Room/Location',
-            'step2': 'Design Style',
-            'step3': 'Size',
-            'step4': 'Shape',
+            'step1': 'Shape',
+            'step2': 'Size',
+            'step3': 'Color',
+            'step4': 'Design Style',
             'step5': 'Design Details',
-            'step6': 'Color'
+            'step6': 'Room/Location'
         }
 
         for step_key, label in step_labels.items():
