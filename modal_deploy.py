@@ -62,86 +62,6 @@ model_volume = modal.Volume.from_name("flux-model-cache", create_if_missing=True
 user_sessions = {}
 generated_images = {}
 
-# Step data (same as in app.py)
-STEP_DATA = [
-    {
-        "id": 1,
-        "title": "Where will this rug live?",
-        "description": "Choose how the rug will be used. This helps determine durability, thickness, and knot density.",
-        "keywords": ["Location", "Room", "Placement"],
-        "options": [
-            {"id": "living-room", "title": "Living Room", "desc": "High traffic, needs durability", "icon": "fa-couch"},
-            {"id": "bedroom", "title": "Bedroom", "desc": "Comfort focused, lower traffic", "icon": "fa-bed"},
-            {"id": "dining-area", "title": "Dining Area", "desc": "Spill resistant, easy to clean", "icon": "fa-utensils"},
-            {"id": "office", "title": "Office or Studio", "desc": "Style meets function", "icon": "fa-briefcase"},
-            {"id": "public-space", "title": "Hotel or Public Space", "desc": "Maximum durability", "icon": "fa-building"},
-            {"id": "wall-art", "title": "Wall or Art Rug", "desc": "Decorative, less durable", "icon": "fa-image"}
-        ]
-    },
-    {
-        "id": 2,
-        "title": "How big should it be?",
-        "description": "Think about the space, not the design yet. Consider furniture layout and room proportions.",
-        "keywords": ["Size", "Dimensions", "Scale"],
-        "options": [
-            {"id": "small", "title": "Small", "desc": "3'x5' to 5'x8'", "icon": "fa-expand-alt"},
-            {"id": "medium", "title": "Medium", "desc": "6'x9' to 8'x10'", "icon": "fa-square"},
-            {"id": "large", "title": "Large", "desc": "9'x12' and above", "icon": "fa-expand-arrows-alt"},
-            {"id": "custom", "title": "Custom Size", "desc": "Specify exact dimensions", "icon": "fa-ruler-combined"},
-            {"id": "runner", "title": "Runner", "desc": "Long and narrow", "icon": "fa-road"},
-            {"id": "round", "title": "Round", "desc": "Circular shape", "icon": "fa-circle"}
-        ]
-    },
-    {
-        "id": 3,
-        "title": "What mood do you want?",
-        "description": "This sets the emotional direction of the rug. Choose the feeling you want the space to evoke.",
-        "keywords": ["Mood", "Vibe", "Atmosphere"],
-        "options": [
-            {"id": "calm", "title": "Calm and Subtle", "desc": "Soothing, peaceful vibe", "icon": "fa-spa"},
-            {"id": "bold", "title": "Bold and Expressive", "desc": "Eye-catching, statement piece", "icon": "fa-fire"},
-            {"id": "warm", "title": "Warm and Cozy", "desc": "Inviting, comfortable feel", "icon": "fa-home"},
-            {"id": "fresh", "title": "Fresh and Light", "desc": "Airy, bright atmosphere", "icon": "fa-sun"},
-            {"id": "luxurious", "title": "Rich and Luxurious", "desc": "Opulent, premium look", "icon": "fa-gem"},
-            {"id": "earthy", "title": "Earthy and Natural", "desc": "Organic, grounded feel", "icon": "fa-leaf"}
-        ]
-    },
-    {
-        "id": 4,
-        "title": "Choose a style language",
-        "description": "This defines the overall look of your rug. Select a style that matches your interior aesthetic.",
-        "keywords": ["Style", "Aesthetic", "Design"],
-        "options": [
-            {"id": "traditional", "title": "Traditional", "desc": "Classic patterns and motifs", "icon": "fa-landmark"},
-            {"id": "modern", "title": "Modern", "desc": "Clean lines, simple forms", "icon": "fa-cube"},
-            {"id": "minimal", "title": "Minimal", "desc": "Essentials only, no clutter", "icon": "fa-minus"},
-            {"id": "tribal", "title": "Tribal", "desc": "Ethnic, cultural patterns", "icon": "fa-globe-americas"},
-            {"id": "contemporary", "title": "Contemporary", "desc": "Current trends, artistic", "icon": "fa-palette"},
-            {"id": "experimental", "title": "Experimental", "desc": "Avant-garde, unconventional", "icon": "fa-flask"}
-        ]
-    },
-    {
-        "id": 5,
-        "title": "Pick a color direction",
-        "description": "Start broad, refine later. Choose a color family that fits your space and mood.",
-        "keywords": ["Color", "Palette", "Hue"],
-        "options": [
-            {"id": "neutrals", "title": "Neutrals", "desc": "Beiges, grays, whites", "icon": "fa-circle"},
-            {"id": "warm-tones", "title": "Warm Tones", "desc": "Reds, oranges, yellows", "icon": "fa-fire"},
-            {"id": "cool-tones", "title": "Cool Tones", "desc": "Blues, greens, purples", "icon": "fa-snowflake"},
-            {"id": "monochrome", "title": "Monochrome", "desc": "Single color palette", "icon": "fa-adjust"},
-            {"id": "high-contrast", "title": "High Contrast", "desc": "Bold light/dark combos", "icon": "fa-star"},
-            {"id": "soft-muted", "title": "Soft and Muted", "desc": "Pastels, subdued tones", "icon": "fa-cloud"}
-        ]
-    },
-    {
-        "id": 6,
-        "title": "Generate Design",
-        "description": "Generate your custom rug design based on all selections.",
-        "keywords": ["Generate", "Create", "Design"]
-    }
-]
-
 
 # FLUX-adapted seamless generation functions
 def asymmetricConv2DConvForward_circular(self, input, weight, bias):
@@ -395,7 +315,6 @@ def generate_prompt_from_selections(selections):
     - step4 = shape
     - step5 = design-details
     - step6 = color
-    - step7 = mood
     """
 
     # Step 1: Room/Location
@@ -415,9 +334,6 @@ def generate_prompt_from_selections(selections):
     # Step 6: Color
     color = selections.get('step6', '')
 
-    # Step 7: Mood
-    mood = selections.get('step7', '')
-
     # Build the main prompt structure
     prompt = f"Flat 2D vector illustration of {style} rug design suitable for a {room}"
 
@@ -426,9 +342,6 @@ def generate_prompt_from_selections(selections):
 
     if detail:
         prompt += f", {detail}"
-
-    if mood:
-        prompt += f", {mood} mood"
 
     if color:
         prompt += f", {color} color palette"
@@ -1675,16 +1588,6 @@ def web_app():
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/api/steps')
-    def get_steps():
-        return jsonify(STEP_DATA)
-
-    @flask_app.route('/api/step/<int:step_id>')
-    def get_step(step_id):
-        if 1 <= step_id <= len(STEP_DATA):
-            return jsonify(STEP_DATA[step_id - 1])
-        return jsonify({"error": "Step not found"}), 404
-
     @flask_app.route('/api/save-selection', methods=['POST'])
     def save_selection():
         data = request.json
@@ -1718,7 +1621,7 @@ def web_app():
         else:
             user_sessions[session_id] = selections
 
-        if len(selections) < 7:
+        if len(selections) < 6:
             return jsonify({"error": "Please complete all required steps before generating"}), 400
 
         # Generate prompt from selections
@@ -1747,8 +1650,8 @@ def web_app():
             # Store selections for this session
             user_sessions[session_id] = selections
 
-        # Check if we have enough selections (7 steps in JSON)
-        if len(selections) < 7:
+        # Check if we have enough selections (6 steps in JSON)
+        if len(selections) < 6:
             return jsonify({"error": "Please complete all required steps before generating"}), 400
 
         # Use custom prompt if provided, otherwise generate from selections
@@ -1811,25 +1714,27 @@ def web_app():
         summary = "CUSTOM RUG DESIGN SUMMARY\n"
         summary += "===========================\n\n"
 
-        for i in range(1, len(STEP_DATA)):
-            selection_id = selections.get(f'step{i}')
-            if selection_id:
-                step = STEP_DATA[i - 1]
-                if step.get('type') == 'text_input':
-                    summary += f"STEP {i}: {step['title']}\n"
-                    summary += f"Details: {selection_id}\n\n"
-                else:
-                    option = next((opt for opt in step['options'] if opt['id'] == selection_id), None)
-                    if option:
-                        summary += f"STEP {i}: {step['title']}\n"
-                        summary += f"Selected: {option['title']}\n"
-                        summary += f"Description: {option['desc']}\n\n"
+        # Step labels for better readability
+        step_labels = {
+            'step1': 'Room/Location',
+            'step2': 'Design Style',
+            'step3': 'Size',
+            'step4': 'Shape',
+            'step5': 'Design Details',
+            'step6': 'Color'
+        }
+
+        for step_key, label in step_labels.items():
+            if step_key in selections and selections[step_key]:
+                summary += f"{label}: {selections[step_key]}\n"
 
         if session_id in generated_images and "prompt" in generated_images[session_id]:
-            summary += "\nGENERATION PROMPT:\n"
+            summary += "\n" + "="*27 + "\n"
+            summary += "GENERATION PROMPT:\n"
+            summary += "="*27 + "\n"
             summary += generated_images[session_id]["prompt"] + "\n"
 
-        summary += "\nThank you for using our Custom Rug Design Tool!\n"
+        summary += "\nThank you for using RugWise Studio!\n"
 
         return jsonify({"summary": summary})
 
