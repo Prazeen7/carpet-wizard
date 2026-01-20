@@ -204,7 +204,7 @@ def disable_seamless_flux(model):
 class FluxModel:
     @modal.enter()
     def load_model(self):
-        """Load the FLUX.1-dev model on container startup with H100 optimizations"""
+        """Load the FLUX.1-schnell model on container startup with H100 optimizations"""
         import torch
         from diffusers import FluxPipeline
         import os
@@ -218,7 +218,7 @@ class FluxModel:
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
 
-        repo_id = "black-forest-labs/FLUX.1-dev"
+        repo_id = "black-forest-labs/FLUX.1-schnell"
         device = "cuda:0"
         torch_dtype = torch.bfloat16
 
@@ -227,7 +227,7 @@ class FluxModel:
         gc.collect()
         torch.cuda.reset_peak_memory_stats()
 
-        print(f"Loading FLUX.1-dev pipeline on {device}...")
+        print(f"Loading FLUX.1-schnell pipeline on {device}...")
 
         self.pipe = FluxPipeline.from_pretrained(
             repo_id,
@@ -247,7 +247,7 @@ class FluxModel:
         gc.collect()
         torch.cuda.empty_cache()
 
-        print(f"FLUX.1-dev model loaded. Peak GPU memory: {torch.cuda.max_memory_allocated() / 1e9:.2f} GB")
+        print(f"FLUX.1-schnell model loaded. Peak GPU memory: {torch.cuda.max_memory_allocated() / 1e9:.2f} GB")
 
     def flux_diffusion_callback(self, pipe, step_index, timestep, callback_kwargs):
         """
@@ -309,7 +309,7 @@ class FluxModel:
             # Create generator on CUDA for seamless generation
             generator = torch.Generator(device="cuda").manual_seed(seed)
 
-            # Generate image with FLUX.1-dev and seamless techniques
+            # Generate image with FLUX.1-schnell and seamless techniques
             with torch.autocast("cuda", dtype=torch.bfloat16):
                 if enable_seamless:
                     image = self.pipe(
@@ -318,9 +318,9 @@ class FluxModel:
                         width=width,
                         height=height,
                         generator=generator,
-                        num_inference_steps=28,
-                        guidance_scale=3.5,
-                        max_sequence_length=512,
+                        num_inference_steps=4,
+                        guidance_scale=0.0,
+                        max_sequence_length=256,
                         callback_on_step_end=self.flux_diffusion_callback
                     ).images[0]
                 else:
@@ -330,9 +330,9 @@ class FluxModel:
                         width=width,
                         height=height,
                         generator=generator,
-                        num_inference_steps=28,
-                        guidance_scale=3.5,
-                        max_sequence_length=512,
+                        num_inference_steps=4,
+                        guidance_scale=0.0,
+                        max_sequence_length=256,
                     ).images[0]
 
             # Cleanup after generation
@@ -386,7 +386,7 @@ def get_dimensions_from_selection(size_selection: str, shape_selection: str = ''
 
 
 def generate_prompt_from_selections(selections):
-    """Convert user selections into a detailed prompt for FLUX.1-dev
+    """Convert user selections into a detailed prompt for FLUX.1-schnell
 
     Step order matches rug-options.json accordions:
     - step1 = rooms
