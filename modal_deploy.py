@@ -1010,8 +1010,12 @@ HTML_CONTENT = """<!DOCTYPE html>
         }
 
         .choice-item {
-            padding-bottom: 16px;
+            padding-bottom: 12px;
             border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
         }
 
         .choice-item:last-child {
@@ -1022,10 +1026,10 @@ HTML_CONTENT = """<!DOCTYPE html>
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 8px;
             font-weight: 600;
             color: var(--dark);
             font-size: 13px;
+            flex-shrink: 0;
         }
 
         .choice-icon {
@@ -1041,11 +1045,11 @@ HTML_CONTENT = """<!DOCTYPE html>
         }
 
         .choice-value {
-            padding-left: 36px;
             color: var(--dark);
             font-size: 13px;
             line-height: 1.4;
-            min-height: 18px;
+            text-align: right;
+            flex: 1;
         }
 
         .empty-choice {
@@ -1054,46 +1058,75 @@ HTML_CONTENT = """<!DOCTYPE html>
             font-size: 12px;
         }
 
-        .json-viewer {
-            margin-top: 20px;
-            background: var(--gray-light);
-            border-radius: 8px;
-            padding: 16px;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 11px;
-            line-height: 1.4;
-            max-height: 180px;
-            overflow-y: auto;
-            display: none;
-        }
-
-        .json-viewer.show {
-            display: block;
-        }
-
-        .json-toggle {
-            text-align: center;
+        .prompt-section {
             margin-top: 16px;
+            padding-top: 16px;
+            border-top: 2px solid var(--border);
         }
 
-        .json-toggle-btn {
-            background: none;
-            border: none;
-            color: var(--primary);
-            font-size: 12px;
+        .prompt-header {
+            font-size: 13px;
             font-weight: 600;
-            cursor: pointer;
+            color: var(--dark);
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
-            gap: 5px;
-            margin: 0 auto;
-            padding: 6px 10px;
-            border-radius: 4px;
-            transition: var(--transition);
+            gap: 8px;
         }
 
-        .json-toggle-btn:hover {
-            background: rgba(124, 58, 237, 0.05);
+        .prompt-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            resize: vertical;
+            transition: var(--transition);
+            background: white;
+            color: var(--dark);
+            line-height: 1.5;
+        }
+
+        .prompt-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.08);
+        }
+
+        .prompt-textarea:disabled {
+            background: var(--gray-light);
+            cursor: not-allowed;
+        }
+
+        .confirm-btn {
+            width: 100%;
+            margin-top: 10px;
+            padding: 12px;
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .confirm-btn:hover:not(:disabled) {
+            background: #0f766e;
+            transform: translateY(-1px);
+        }
+
+        .confirm-btn:disabled {
+            background: var(--gray);
+            cursor: not-allowed;
+            transform: none;
         }
 
         .loading-spinner {
@@ -1248,12 +1281,17 @@ HTML_CONTENT = """<!DOCTYPE html>
                 <div class="choices-list" id="choices-list">
                 </div>
 
-                <button class="json-toggle-btn" id="json-toggle-btn">
-                    <i class="fas fa-code"></i>
-                    Show JSON Data
-                </button>
-
-                <div class="json-viewer" id="json-viewer"></div>
+                <div class="prompt-section" id="prompt-section" style="display: none;">
+                    <div class="prompt-header">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        <span>Generated Prompt</span>
+                    </div>
+                    <textarea class="prompt-textarea" id="prompt-textarea" placeholder="Click 'Generate Rug Design' to create your prompt..."></textarea>
+                    <button class="confirm-btn" id="confirm-generate-btn" disabled>
+                        <i class="fas fa-check-circle"></i>
+                        Confirm & Generate Image
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1277,12 +1315,12 @@ HTML_CONTENT = """<!DOCTYPE html>
             updateChoicesDisplay();
             updateNavigationButtons();
 
-            document.getElementById('generate-btn').addEventListener('click', generateDesign);
+            document.getElementById('generate-btn').addEventListener('click', generatePrompt);
             document.getElementById('prev-btn').addEventListener('click', () => navigateToStep(currentStep - 1));
             document.getElementById('next-btn').addEventListener('click', () => navigateToStep(currentStep + 1));
-            document.getElementById('json-toggle-btn').addEventListener('click', toggleJsonViewer);
+            document.getElementById('confirm-generate-btn').addEventListener('click', confirmAndGenerate);
             document.getElementById('download-btn').addEventListener('click', downloadGeneratedImage);
-            document.getElementById('refresh-btn').addEventListener('click', generateDesign);
+            document.getElementById('refresh-btn').addEventListener('click', generatePrompt);
         });
 
         // Load step data from JSON file
@@ -1431,7 +1469,7 @@ HTML_CONTENT = """<!DOCTYPE html>
                         <div class="choice-icon">
                             <i class="${accordion.icon}"></i>
                         </div>
-                        <span>${accordion.title}</span>
+                        <span>${accordion.title}:</span>
                     </div>
                     <div class="choice-value empty-choice">Not selected</div>
                 `;
@@ -1444,7 +1482,7 @@ HTML_CONTENT = """<!DOCTYPE html>
             stepData.forEach(accordion => {
                 const choiceItem = document.getElementById(`choice-${accordion.id}`);
                 const valueElement = choiceItem.querySelector('.choice-value');
-                
+
                 if (userChoices[accordion.id]) {
                     valueElement.textContent = userChoices[accordion.id];
                     valueElement.classList.remove('empty-choice');
@@ -1453,9 +1491,6 @@ HTML_CONTENT = """<!DOCTYPE html>
                     valueElement.classList.add('empty-choice');
                 }
             });
-
-            const jsonViewer = document.getElementById('json-viewer');
-            jsonViewer.textContent = JSON.stringify(userChoices, null, 2);
         }
 
         function navigateToStep(index) {
@@ -1487,26 +1522,67 @@ HTML_CONTENT = """<!DOCTYPE html>
             generateBtn.disabled = !allSelected;
         }
 
-        function toggleJsonViewer() {
-            const jsonViewer = document.getElementById('json-viewer');
-            const toggleBtn = document.getElementById('json-toggle-btn');
-            
-            jsonViewer.classList.toggle('show');
-            toggleBtn.innerHTML = jsonViewer.classList.contains('show') 
-                ? '<i class="fas fa-code"></i> Hide JSON Data'
-                : '<i class="fas fa-code"></i> Show JSON Data';
+        async function generatePrompt() {
+            const generateBtn = document.getElementById('generate-btn');
+            const promptSection = document.getElementById('prompt-section');
+            const promptTextarea = document.getElementById('prompt-textarea');
+            const confirmBtn = document.getElementById('confirm-generate-btn');
+
+            const originalText = generateBtn.innerHTML;
+            generateBtn.innerHTML = '<div class="loading-spinner"></div> Generating Prompt...';
+            generateBtn.disabled = true;
+
+            try {
+                const selections = {};
+                stepData.forEach((step, index) => {
+                    selections[`step${index + 1}`] = userChoices[step.id];
+                });
+
+                const response = await fetch('/api/generate-prompt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        selections: selections
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                } else if (data.prompt) {
+                    promptTextarea.value = data.prompt;
+                    promptSection.style.display = 'block';
+                    confirmBtn.disabled = false;
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to generate prompt.');
+            }
+
+            generateBtn.innerHTML = originalText;
+            generateBtn.disabled = false;
         }
 
-        async function generateDesign() {
-            const generateBtn = document.getElementById('generate-btn');
+        async function confirmAndGenerate() {
+            const confirmBtn = document.getElementById('confirm-generate-btn');
+            const promptTextarea = document.getElementById('prompt-textarea');
             const imagePlaceholder = document.getElementById('image-placeholder');
             const imageDisplay = document.getElementById('image-display');
             const imageStatus = document.getElementById('image-status');
             const generatedImage = document.getElementById('generated-image');
 
-            const originalText = generateBtn.innerHTML;
-            generateBtn.innerHTML = '<div class="loading-spinner"></div> Generating...';
-            generateBtn.disabled = true;
+            const customPrompt = promptTextarea.value.trim();
+            if (!customPrompt) {
+                alert('Please enter a prompt before generating.');
+                return;
+            }
+
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.innerHTML = '<div class="loading-spinner"></div> Generating Image...';
+            confirmBtn.disabled = true;
             imageStatus.textContent = 'Generating your design...';
 
             try {
@@ -1520,7 +1596,8 @@ HTML_CONTENT = """<!DOCTYPE html>
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         session_id: sessionId,
-                        selections: selections
+                        selections: selections,
+                        custom_prompt: customPrompt
                     })
                 });
 
@@ -1542,8 +1619,8 @@ HTML_CONTENT = """<!DOCTYPE html>
                 imageStatus.textContent = 'Generation failed';
             }
 
-            generateBtn.innerHTML = originalText;
-            generateBtn.disabled = false;
+            confirmBtn.innerHTML = originalText;
+            confirmBtn.disabled = false;
         }
 
         async function downloadGeneratedImage() {
@@ -1628,6 +1705,31 @@ def web_app():
             return jsonify(user_sessions[session_id])
         return jsonify({})
 
+    @flask_app.route('/api/generate-prompt', methods=['POST'])
+    def generate_prompt_endpoint():
+        data = request.json
+        session_id = data.get('session_id', str(uuid.uuid4()))
+        selections = data.get('selections')
+
+        if not selections:
+            if session_id not in user_sessions:
+                return jsonify({"error": "No selections found for this session"}), 400
+            selections = user_sessions[session_id]
+        else:
+            user_sessions[session_id] = selections
+
+        if len(selections) < 7:
+            return jsonify({"error": "Please complete all required steps before generating"}), 400
+
+        # Generate prompt from selections
+        prompt = generate_prompt_from_selections(selections)
+
+        return jsonify({
+            "success": True,
+            "session_id": session_id,
+            "prompt": prompt
+        })
+
     @flask_app.route('/api/generate-design', methods=['POST'])
     def generate_design():
         data = request.json
@@ -1649,8 +1751,12 @@ def web_app():
         if len(selections) < 7:
             return jsonify({"error": "Please complete all required steps before generating"}), 400
 
-        # Generate prompt from selections
-        prompt = generate_prompt_from_selections(selections)
+        # Use custom prompt if provided, otherwise generate from selections
+        custom_prompt = data.get('custom_prompt')
+        if custom_prompt:
+            prompt = custom_prompt
+        else:
+            prompt = generate_prompt_from_selections(selections)
 
         # Get dimensions from size and shape selections
         size_selection = selections.get('step3', '')

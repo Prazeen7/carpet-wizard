@@ -120,22 +120,6 @@
       "customInputId": "custom-color",
       "customInputPlaceholder": "Enter custom color preference...",
       "initiallyOpen": false
-    },
-    {
-      "id": "mood",
-      "title": "Mood",
-      "icon": "fas fa-heart",
-      "type": "radio",
-      "options": [
-        "Calm and subtle",
-        "Bold and expressive",
-        "Warm and cozy",
-        "Fresh and light",
-        "Rich and luxurious",
-        "Earthy and natural"
-      ],
-      "hasCustomInput": false,
-      "initiallyOpen": false
     }
   ]
 }
