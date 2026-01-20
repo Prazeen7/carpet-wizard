@@ -202,16 +202,22 @@ class FluxModel:
         return callback_kwargs
 
     @modal.method()
-    def generate_image(self, prompt: str, width: int = 1024, height: int = 1024, seed: int = 42, enable_seamless: bool = True):
+    def generate_image(self, prompt: str, width: int = 896, height: int = 1200, seed: int = None, enable_seamless: bool = True):
         """Generate an image from a prompt with H100 optimizations and seamless pattern techniques"""
         import torch
         from io import BytesIO
         import gc
+        import random
 
         try:
+            # Generate random seed if not provided
+            if seed is None:
+                seed = random.randint(0, 2**32 - 1)
+
             print(f"Generating image with prompt:\n{prompt}")
             print(f"Negative prompt:\n{DEFAULT_NEGATIVE_PROMPT}")
             print(f"Image dimensions: {width}x{height}")
+            print(f"Seed: {seed}")
             print(f"Seamless mode: {enable_seamless}")
             print(f"GPU memory before generation: {torch.cuda.memory_allocated() / 1e9:.2f} GB")
 
@@ -302,10 +308,10 @@ def get_dimensions_from_selection(size_selection: str, shape_selection: str = ''
         return (1024, 1024)
 
     # Default medium size
-    return (1024, 1024)
+    return (896, 1200)
 
 
-def generate_prompt_from_selections(selections):
+def generate_prompt_from_selections(selections, session_id=None, style_configs=None):
     """Convert user selections into a detailed prompt for FLUX.1-schnell
 
     Step order matches rug-options.json accordions:
@@ -334,8 +340,34 @@ def generate_prompt_from_selections(selections):
     # Step 6: Color
     color = selections.get('step6', '')
 
-    # Build the main prompt structure
-    prompt = f"Flat 2D vector illustration of {style} rug design suitable for a {room}"
+    # Handle Abstract style with randomization
+    if style == 'Abstract' and session_id and style_configs:
+        abstract_config = style_configs.get('Abstract', {})
+        if abstract_config:
+            # Get randomized parameters
+            params = select_random_abstract_params(session_id, abstract_config)
+
+            if params:
+                # Build enhanced prompt with abstract parameters
+                style_description = (
+                    f"{params['fluidStyles']} in {params['patterns']} pattern "
+                    f"with {params['composition']} arrangement, "
+                    f"{params['density']} density, {params['scale']}, "
+                    f"{params['orientation']}, {params['spacing']}, "
+                    f"{params['arrangement']}"
+                )
+
+                prompt = f"Flat 2D vector illustration of {style_description} "
+                prompt += f"rug design suitable for a {room}"
+            else:
+                # Fallback if parameters unavailable
+                prompt = f"Flat 2D vector illustration of {style} rug design suitable for a {room}"
+        else:
+            # Fallback if config not found
+            prompt = f"Flat 2D vector illustration of {style} rug design suitable for a {room}"
+    else:
+        # Original logic for non-Abstract styles
+        prompt = f"Flat 2D vector illustration of {style} rug design suitable for a {room}"
 
     if shape:
         prompt += f" in {shape} shape"
@@ -368,6 +400,100 @@ manufacturing-ready vector artwork.
 
     return prompt.strip()
 
+
+def select_random_abstract_params(session_id, style_configs):
+    """
+    Select random abstract parameters that haven't been used yet.
+
+    Args:
+        session_id: User session identifier
+        style_configs: Abstract parameter configurations from JSON
+
+    Returns:
+        dict: {fluidStyles, composition, patterns, density, scale, orientation, spacing, arrangement} or None if exhausted
+    """
+    import random
+
+    # Initialize tracking if not exists
+    if session_id not in user_sessions:
+        user_sessions[session_id] = {}
+
+    if 'abstract_params_tracking' not in user_sessions[session_id]:
+        # Calculate total combinations based on available parameters
+        total_combos = (
+            len(style_configs.get('fluidStyles', [])) *
+            len(style_configs.get('composition', [])) *
+            len(style_configs.get('patterns', []))
+        )
+
+        user_sessions[session_id]['abstract_params_tracking'] = {
+            'used_combinations': set(),  # Use set for O(1) lookup
+            'current_params': None,
+            'total_combinations': total_combos,
+            'used_count': 0
+        }
+
+    tracking = user_sessions[session_id]['abstract_params_tracking']
+    used_combinations = tracking['used_combinations']
+
+    # Check if all combinations exhausted - auto-reset
+    if tracking['used_count'] >= tracking['total_combinations']:
+        tracking['used_combinations'] = set()
+        tracking['used_count'] = 0
+        tracking['reset_count'] = tracking.get('reset_count', 0) + 1
+        used_combinations = tracking['used_combinations']
+
+    # Generate available combinations
+    max_attempts = 100  # Prevent infinite loop
+    attempts = 0
+
+    while attempts < max_attempts:
+        # Select one parameter from each category
+        fluidStyle = random.choice(style_configs.get('fluidStyles', ['liquid paint pour']))
+        comp = random.choice(style_configs.get('composition', ['centrally composed']))
+        pattern = random.choice(style_configs.get('patterns', ['liquid marble effect']))
+        density = random.choice(style_configs.get('density', ['moderately filled']))
+        scale = random.choice(style_configs.get('scale', ['uniform scale']))
+        orientation = random.choice(style_configs.get('orientation', ['horizontal direction']))
+        spacing = random.choice(style_configs.get('spacing', ['tight uniform gaps']))
+        arrangement = random.choice(style_configs.get('arrangement', ['organic natural flow']))
+
+        # Create unique key for this combination (using main parameters)
+        combo_key = f"{fluidStyle}|{comp}|{pattern}"
+
+        if combo_key not in used_combinations:
+            # Track usage
+            used_combinations.add(combo_key)
+            selected = {
+                'fluidStyles': fluidStyle,
+                'composition': comp,
+                'patterns': pattern,
+                'density': density,
+                'scale': scale,
+                'orientation': orientation,
+                'spacing': spacing,
+                'arrangement': arrangement
+            }
+            tracking['current_params'] = selected
+            tracking['used_count'] = len(used_combinations)
+
+            return selected
+
+        attempts += 1
+
+    # Fallback: if max attempts reached, reset and try once more
+    tracking['used_combinations'] = set()
+    tracking['used_count'] = 0
+    return {
+        'fluidStyles': random.choice(style_configs.get('fluidStyles', ['liquid paint pour'])),
+        'composition': random.choice(style_configs.get('composition', ['centrally composed'])),
+        'patterns': random.choice(style_configs.get('patterns', ['liquid marble effect'])),
+        'density': random.choice(style_configs.get('density', ['moderately filled'])),
+        'scale': random.choice(style_configs.get('scale', ['uniform scale'])),
+        'orientation': random.choice(style_configs.get('orientation', ['horizontal direction'])),
+        'spacing': random.choice(style_configs.get('spacing', ['tight uniform gaps'])),
+        'arrangement': random.choice(style_configs.get('arrangement', ['organic natural flow']))
+    }
 
 
 # HTML content embedded directly in deployment file (RugWise Studio UI)
@@ -838,20 +964,55 @@ HTML_CONTENT = """<!DOCTYPE html>
             flex-direction: column;
         }
 
-        .generated-image {
+        .image-display:fullscreen {
+            background: #1f2937;
+        }
+
+        .image-display:fullscreen .image-wrapper {
+            background: #1f2937;
+        }
+
+        .image-display:-webkit-full-screen {
+            background: #1f2937;
+        }
+
+        .image-display:-webkit-full-screen .image-wrapper {
+            background: #1f2937;
+        }
+
+        .image-wrapper {
             width: 100%;
             height: 100%;
-            object-fit: contain;
-            padding: 20px;
-            max-width: 100%;
-            max-height: 100%;
+            overflow: auto;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            position: relative;
+        }
+
+        .image-wrapper.centered {
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-wrapper.grabbing {
+            cursor: grabbing;
+        }
+
+        .generated-image {
+            transition: width 0.2s ease, height 0.2s ease;
+            display: block;
+            max-width: none;
+            max-height: none;
+            margin: auto;
         }
 
         .image-actions {
             position: absolute;
-            bottom: 16px;
+            top: 16px;
             right: 16px;
             display: flex;
+            flex-direction: column;
             gap: 8px;
             z-index: 10;
             pointer-events: auto;
@@ -877,6 +1038,11 @@ HTML_CONTENT = """<!DOCTYPE html>
             background: var(--primary);
             color: white;
             transform: translateY(-1px);
+        }
+
+        #fullscreen-btn {
+            margin-bottom: 8px;
+            border-bottom: 2px solid var(--border);
         }
 
         .choices-panel {
@@ -989,7 +1155,7 @@ HTML_CONTENT = """<!DOCTYPE html>
 
         .prompt-textarea {
             width: 100%;
-            min-height: 120px;
+            min-height: 200px;
             padding: 12px;
             border: 1.5px solid var(--border);
             border-radius: 8px;
@@ -1170,8 +1336,22 @@ HTML_CONTENT = """<!DOCTYPE html>
                 </div>
 
                 <div class="image-display" id="image-display">
-                    <img class="generated-image" id="generated-image" src="" alt="Generated Rug Design">
+                    <div class="image-wrapper" id="image-wrapper">
+                        <img class="generated-image" id="generated-image" src="" alt="Generated Rug Design">
+                    </div>
                     <div class="image-actions">
+                        <button class="image-action-btn" id="zoom-in-btn" title="Zoom In">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="image-action-btn" id="zoom-out-btn" title="Zoom Out">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button class="image-action-btn" id="zoom-reset-btn" title="Reset Zoom">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                        <button class="image-action-btn" id="fullscreen-btn" title="Fullscreen">
+                            <i class="fas fa-expand-arrows-alt"></i>
+                        </button>
                         <button class="image-action-btn" id="download-btn" title="Download Design">
                             <i class="fas fa-download"></i>
                         </button>
@@ -1215,6 +1395,13 @@ HTML_CONTENT = """<!DOCTYPE html>
         let userChoices = {};
         let sessionId = '';
         let currentStep = 0;
+        let zoomLevel = 1;
+        let fullscreenZoomLevel = 1;
+        let fitZoomLevel = 1;
+        let fullscreenFitZoomLevel = 1;
+        let isFullscreen = false;
+        let isPanning = false;
+        let startX, startY, scrollLeft, scrollTop;
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', async function () {
@@ -1234,6 +1421,22 @@ HTML_CONTENT = """<!DOCTYPE html>
             document.getElementById('confirm-generate-btn').addEventListener('click', confirmAndGenerate);
             document.getElementById('download-btn').addEventListener('click', downloadGeneratedImage);
             document.getElementById('refresh-btn').addEventListener('click', generatePrompt);
+
+            // Zoom controls
+            document.getElementById('zoom-in-btn').addEventListener('click', zoomIn);
+            document.getElementById('zoom-out-btn').addEventListener('click', zoomOut);
+            document.getElementById('zoom-reset-btn').addEventListener('click', resetZoom);
+            document.getElementById('fullscreen-btn').addEventListener('click', toggleFullscreen);
+
+            // Mouse wheel zoom
+            const imageWrapper = document.getElementById('image-wrapper');
+            imageWrapper.addEventListener('wheel', handleMouseWheel, { passive: false });
+
+            // Pan functionality
+            imageWrapper.addEventListener('mousedown', startPan);
+            imageWrapper.addEventListener('mousemove', pan);
+            imageWrapper.addEventListener('mouseup', endPan);
+            imageWrapper.addEventListener('mouseleave', endPan);
         });
 
         // Load step data from JSON file
@@ -1431,8 +1634,9 @@ HTML_CONTENT = """<!DOCTYPE html>
             prevBtn.disabled = currentStep === 0;
             nextBtn.disabled = currentStep === stepData.length - 1;
 
-            const allSelected = stepData.every(step => userChoices[step.id]);
-            generateBtn.disabled = !allSelected;
+            // Only require step2 (Design Style) to be selected
+            const designStyleSelected = stepData.length > 1 && userChoices[stepData[1].id];
+            generateBtn.disabled = !designStyleSelected;
         }
 
         async function generatePrompt() {
@@ -1524,6 +1728,13 @@ HTML_CONTENT = """<!DOCTYPE html>
                     imagePlaceholder.style.display = 'none';
                     imageDisplay.classList.add('show');
                     imageStatus.textContent = 'Design complete!';
+
+                    // Calculate and apply fit zoom when image is loaded
+                    generatedImage.onload = function() {
+                        fitZoomLevel = calculateFitZoom();
+                        zoomLevel = fitZoomLevel;
+                        applyZoom();
+                    };
                 }
 
             } catch (error) {
@@ -1556,6 +1767,193 @@ HTML_CONTENT = """<!DOCTYPE html>
                 console.error('Error:', error);
                 alert('Failed to download image.');
             }
+        }
+
+        // Zoom functions
+        function zoomIn() {
+            if (isFullscreen) {
+                fullscreenZoomLevel = Math.min(fullscreenZoomLevel + 0.25, 5);
+            } else {
+                zoomLevel = Math.min(zoomLevel + 0.25, 5);
+            }
+            applyZoom();
+        }
+
+        function zoomOut() {
+            if (isFullscreen) {
+                fullscreenZoomLevel = Math.max(fullscreenZoomLevel - 0.25, 0.5);
+            } else {
+                zoomLevel = Math.max(zoomLevel - 0.25, 0.5);
+            }
+            applyZoom();
+        }
+
+        function resetZoom() {
+            if (isFullscreen) {
+                fullscreenZoomLevel = fullscreenFitZoomLevel;
+            } else {
+                zoomLevel = fitZoomLevel;
+            }
+            applyZoom();
+        }
+
+        function calculateFitZoom() {
+            const imageWrapper = document.getElementById('image-wrapper');
+            const generatedImage = document.getElementById('generated-image');
+
+            if (!generatedImage.naturalWidth || !generatedImage.naturalHeight) {
+                return 1;
+            }
+
+            const wrapperWidth = imageWrapper.clientWidth;
+            const wrapperHeight = imageWrapper.clientHeight;
+            const imageWidth = generatedImage.naturalWidth;
+            const imageHeight = generatedImage.naturalHeight;
+
+            // Account for margin (20px on each side)
+            const margin = 40;
+
+            // Calculate scale to fit both width and height
+            const scaleX = (wrapperWidth - margin) / imageWidth;
+            const scaleY = (wrapperHeight - margin) / imageHeight;
+
+            // Use the smaller scale to ensure the entire image fits
+            // Allow scaling up to 1.5x if image is small, but cap at that
+            return Math.min(scaleX, scaleY, 1.5);
+        }
+
+        function applyZoom() {
+            const image = document.getElementById('generated-image');
+            const imageWrapper = document.getElementById('image-wrapper');
+
+            // Use the correct zoom level based on current mode
+            const currentZoom = isFullscreen ? fullscreenZoomLevel : zoomLevel;
+
+            // Calculate actual dimensions
+            const width = image.naturalWidth * currentZoom;
+            const height = image.naturalHeight * currentZoom;
+
+            // Apply dimensions
+            image.style.width = width + 'px';
+            image.style.height = height + 'px';
+
+            // Center the image if it fits within the wrapper, otherwise align to top-left
+            const wrapperWidth = imageWrapper.clientWidth;
+            const wrapperHeight = imageWrapper.clientHeight;
+
+            if (width <= wrapperWidth && height <= wrapperHeight) {
+                imageWrapper.classList.add('centered');
+                image.style.margin = 'auto';
+                imageWrapper.style.cursor = 'default';
+            } else {
+                imageWrapper.classList.remove('centered');
+                image.style.margin = '0';
+                imageWrapper.style.cursor = 'grab';
+            }
+        }
+
+        function handleMouseWheel(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            if (isFullscreen) {
+                fullscreenZoomLevel = Math.max(0.5, Math.min(5, fullscreenZoomLevel + delta));
+            } else {
+                zoomLevel = Math.max(0.5, Math.min(5, zoomLevel + delta));
+            }
+            applyZoom();
+        }
+
+        // Pan functions
+        function startPan(e) {
+            const wrapper = document.getElementById('image-wrapper');
+            const image = document.getElementById('generated-image');
+
+            // Only enable panning if the image is larger than the wrapper
+            const canPan = image.scrollWidth > wrapper.clientWidth || image.scrollHeight > wrapper.clientHeight;
+
+            if (canPan) {
+                isPanning = true;
+                wrapper.classList.add('grabbing');
+                startX = e.clientX;
+                startY = e.clientY;
+                scrollLeft = wrapper.scrollLeft;
+                scrollTop = wrapper.scrollTop;
+                e.preventDefault();
+            }
+        }
+
+        function pan(e) {
+            if (!isPanning) return;
+            e.preventDefault();
+
+            const wrapper = document.getElementById('image-wrapper');
+            const walkX = e.clientX - startX;
+            const walkY = e.clientY - startY;
+
+            wrapper.scrollLeft = scrollLeft - walkX;
+            wrapper.scrollTop = scrollTop - walkY;
+        }
+
+        function endPan() {
+            const wrapper = document.getElementById('image-wrapper');
+            isPanning = false;
+            wrapper.classList.remove('grabbing');
+        }
+
+        // Fullscreen function
+        function toggleFullscreen() {
+            const imageContainer = document.getElementById('image-display');
+
+            if (!document.fullscreenElement) {
+                if (imageContainer.requestFullscreen) {
+                    imageContainer.requestFullscreen();
+                } else if (imageContainer.webkitRequestFullscreen) {
+                    imageContainer.webkitRequestFullscreen();
+                } else if (imageContainer.msRequestFullscreen) {
+                    imageContainer.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        // Update fullscreen button icon when entering/exiting fullscreen
+        document.addEventListener('fullscreenchange', updateFullscreenButton);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+        document.addEventListener('msfullscreenchange', updateFullscreenButton);
+
+        function updateFullscreenButton() {
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            const icon = fullscreenBtn.querySelector('i');
+
+            if (document.fullscreenElement) {
+                isFullscreen = true;
+                icon.className = 'fas fa-compress-arrows-alt';
+                fullscreenBtn.title = 'Exit Fullscreen';
+
+                // Calculate fit zoom for fullscreen mode
+                fullscreenFitZoomLevel = calculateFitZoom();
+                // Set fullscreen zoom to fit if it's the first time entering fullscreen
+                if (fullscreenZoomLevel === 1) {
+                    fullscreenZoomLevel = fullscreenFitZoomLevel;
+                }
+            } else {
+                isFullscreen = false;
+                icon.className = 'fas fa-expand-arrows-alt';
+                fullscreenBtn.title = 'Fullscreen';
+
+                // Recalculate fit zoom for normal mode
+                fitZoomLevel = calculateFitZoom();
+            }
+
+            // Apply the zoom for the current mode
+            applyZoom();
         }
     </script>
 </body>
@@ -1610,6 +2008,8 @@ def web_app():
 
     @flask_app.route('/api/generate-prompt', methods=['POST'])
     def generate_prompt_endpoint():
+        import json
+
         data = request.json
         session_id = data.get('session_id', str(uuid.uuid4()))
         selections = data.get('selections')
@@ -1621,16 +2021,39 @@ def web_app():
         else:
             user_sessions[session_id] = selections
 
-        if len(selections) < 6:
-            return jsonify({"error": "Please complete all required steps before generating"}), 400
+        # Only require step2 (Design Style) to be selected
+        if not selections.get('step2'):
+            return jsonify({"error": "Please select a Design Style before generating"}), 400
 
-        # Generate prompt from selections
-        prompt = generate_prompt_from_selections(selections)
+        # Load style configurations from JSON
+        style_configs = None
+        try:
+            with open('/app/rug-options.json', 'r') as f:
+                data_json = json.load(f)
+                style_configs = data_json.get('styleConfigurations', {})
+        except Exception as e:
+            print(f"Warning: Could not load style configurations: {e}")
+
+        # Generate prompt with style configurations
+        prompt = generate_prompt_from_selections(selections, session_id, style_configs)
+
+        # Get tracking info for Abstract style
+        tracking_info = {}
+        if selections.get('step2') == 'Abstract' and session_id in user_sessions:
+            tracking = user_sessions[session_id].get('abstract_params_tracking', {})
+            if tracking:
+                tracking_info = {
+                    'used_count': tracking.get('used_count', 0),
+                    'total_combinations': tracking.get('total_combinations', 0),
+                    'current_params': tracking.get('current_params', {}),
+                    'reset_count': tracking.get('reset_count', 0)
+                }
 
         return jsonify({
             "success": True,
             "session_id": session_id,
-            "prompt": prompt
+            "prompt": prompt,
+            "tracking_info": tracking_info
         })
 
     @flask_app.route('/api/generate-design', methods=['POST'])
@@ -1650,16 +2073,26 @@ def web_app():
             # Store selections for this session
             user_sessions[session_id] = selections
 
-        # Check if we have enough selections (6 steps in JSON)
-        if len(selections) < 6:
-            return jsonify({"error": "Please complete all required steps before generating"}), 400
+        # Only require step2 (Design Style) to be selected
+        if not selections.get('step2'):
+            return jsonify({"error": "Please select a Design Style before generating"}), 400
 
         # Use custom prompt if provided, otherwise generate from selections
         custom_prompt = data.get('custom_prompt')
         if custom_prompt:
             prompt = custom_prompt
         else:
-            prompt = generate_prompt_from_selections(selections)
+            # Load style configurations from JSON
+            import json
+            style_configs = None
+            try:
+                with open('/app/rug-options.json', 'r') as f:
+                    data_json = json.load(f)
+                    style_configs = data_json.get('styleConfigurations', {})
+            except Exception as e:
+                print(f"Warning: Could not load style configurations: {e}")
+
+            prompt = generate_prompt_from_selections(selections, session_id, style_configs)
 
         # Get dimensions from size and shape selections
         size_selection = selections.get('step3', '')
