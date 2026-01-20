@@ -841,6 +841,8 @@ HTML_CONTENT = """<!DOCTYPE html>
             flex-direction: column;
             overflow: hidden;
             border: 1px solid var(--border);
+            min-height: 0;
+            position: relative;
         }
 
         .image-header {
@@ -871,6 +873,7 @@ HTML_CONTENT = """<!DOCTYPE html>
             padding: 30px;
             position: relative;
             overflow: hidden;
+            min-height: 0;
         }
 
         .placeholder-content {
@@ -914,10 +917,12 @@ HTML_CONTENT = """<!DOCTYPE html>
             width: 100%;
             height: 100%;
             position: relative;
+            overflow: hidden;
         }
 
         .image-display.show {
-            display: block;
+            display: flex;
+            flex-direction: column;
         }
 
         .generated-image {
@@ -925,6 +930,8 @@ HTML_CONTENT = """<!DOCTYPE html>
             height: 100%;
             object-fit: contain;
             padding: 20px;
+            max-width: 100%;
+            max-height: 100%;
         }
 
         .image-actions {
@@ -933,6 +940,8 @@ HTML_CONTENT = """<!DOCTYPE html>
             right: 16px;
             display: flex;
             gap: 8px;
+            z-index: 10;
+            pointer-events: auto;
         }
 
         .image-action-btn {
