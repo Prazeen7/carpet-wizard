@@ -246,7 +246,7 @@ class FluxModel:
                         generator=generator,
                         num_inference_steps=4,
                         guidance_scale=0.0,
-                        max_sequence_length=256,
+                        max_sequence_length=512,
                         callback_on_step_end=self.flux_diffusion_callback
                     ).images[0]
                 else:
@@ -258,7 +258,7 @@ class FluxModel:
                         generator=generator,
                         num_inference_steps=4,
                         guidance_scale=0.0,
-                        max_sequence_length=256,
+                        max_sequence_length=512,
                     ).images[0]
 
             # Cleanup after generation
@@ -293,22 +293,41 @@ def get_dimensions_from_selection(size_selection: str, shape_selection: str = ''
     size_selection_lower = (size_selection or '').lower()
     shape_selection_lower = (shape_selection or '').lower()
 
-    # Handle shape-based dimensions first
-    if 'runner' in shape_selection_lower:
-        return (1024, 512)
-    if 'round' in shape_selection_lower or 'square' in shape_selection_lower:
-        return (1024, 1024)
-
-    # Handle size-based dimensions
-    if '900' in size_selection or '1200' in size_selection:
-        return (896, 1200)  # 900x1200 adjusted to be divisible by 16
+    # Determine base size multiplier from size selection
     if 'small' in size_selection_lower or '120' in size_selection:
-        return (768, 768)
-    if 'large' in size_selection_lower or '340' in size_selection or '290' in size_selection:
-        return (1024, 1024)
+        size_mult = 0.75  # smaller dimensions
+    elif 'large' in size_selection_lower or '340' in size_selection or '290' in size_selection:
+        size_mult = 1.25  # larger dimensions
+    else:
+        size_mult = 1.0  # medium/default
 
-    # Default medium size
-    return (896, 1200)
+    # Shape-based dimensions (width, height)
+    shape_dimensions = {
+        'circle': (1024, 1024),      # 1:1 square for circular design
+        'square': (1024, 1024),      # 1:1 square
+        'oval': (1024, 768),         # 4:3 horizontal ellipse
+        'rectangle': (896, 1200),    # ~3:4 vertical rectangle
+        'runner': (1280, 512),       # 5:2 long narrow
+        'round at ends': (1024, 1024), # stadium shape ~9:5
+        'octagon': (1024, 1024),     # 1:1 square for octagon
+    }
+
+    # Find matching shape
+    base_width, base_height = (896, 1152)  # default rectangle
+    for shape_key, dims in shape_dimensions.items():
+        if shape_key in shape_selection_lower:
+            base_width, base_height = dims
+            break
+
+    # Apply size multiplier and ensure divisible by 16
+    width = int((base_width * size_mult) // 16) * 16
+    height = int((base_height * size_mult) // 16) * 16
+
+    # Clamp to reasonable bounds (min 512, max 1536)
+    width = max(512, min(1536, width))
+    height = max(512, min(1536, height))
+
+    return (width, height)
 
 
 def generate_prompt_from_selections(selections, session_id=None, style_configs=None):
@@ -340,45 +359,114 @@ def generate_prompt_from_selections(selections, session_id=None, style_configs=N
     # Step 6: Room/Location
     room = selections.get('step6', 'indoor space')
 
-    # Handle Abstract style with randomization
-    if style == 'Abstract' and session_id and style_configs:
-        abstract_config = style_configs.get('Abstract', {})
-        if abstract_config:
-            # Get randomized parameters
-            params = select_random_abstract_params(session_id, abstract_config)
+    # Build shape description for rug
+    shape_descriptions = {
+        'rectangle': 'rectangular',
+        'square': 'square',
+        'circle': 'circular',
+        'oval': 'oval',
+        'runner': 'runner',
+        'round at ends': 'narrow and round at ends',
+        'octagon': 'octagonal'
+    }
+    shape_name = shape_descriptions.get(shape, shape)
 
-            if params:
-                # Build enhanced prompt with abstract parameters
-                style_description = (
-                    f"{params['fluidStyles']} in {params['patterns']} pattern "
-                    f"with {params['composition']} arrangement, "
-                    f"{params['density']} density, {params['scale']}, "
-                    f"{params['orientation']}, {params['spacing']}, "
-                    f"{params['arrangement']}"
-                )
+    # Determine which prompt structure to use based on shape
+    if shape in ['circle', 'oval', 'octagon', 'round at ends']:
+        # ORIGINAL PROMPT STRUCTURE for circle and oval
+        prompt = f"Flat 2D vector illustration of a {shape_name} rug. "
 
-                prompt = f"Flat 2D vector illustration of {style_description} "
-                prompt += f"rug design suitable for a {room}"
+        # Handle Abstract style with randomization
+        if style == 'Abstract' and session_id and style_configs:
+            abstract_config = style_configs.get('Abstract', {})
+            if abstract_config:
+                # Get randomized parameters
+                params = select_random_abstract_params(session_id, abstract_config)
+
+                if params:
+                    # Build enhanced prompt with abstract parameters
+                    style_description = (
+                        f"{params['fluidStyles']} in {params['patterns']} pattern "
+                        f"with {params['composition']} arrangement, "
+                        f"{params['density']} density, {params['scale']}, "
+                        f"{params['orientation']}, {params['spacing']}, "
+                        f"{params['arrangement']}"
+                    )
+                    prompt += f"The design displays {style_description} design"
+                else:
+                    prompt += f"The design displays {style} design"
             else:
-                # Fallback if parameters unavailable
+                prompt += f"The design displays {style} design"
+        else:
+            prompt += f"The design displays {style} design"
+
+        # Add detail if provided
+        if detail:
+            prompt += f", {detail}"
+
+        # Add color if provided
+        if color:
+            prompt += f", {color} colors"
+
+        prompt += ".\n\n"
+
+        # Add shape clarification
+        prompt += f"The shape of the design should be like {shape_name} rug.\n"
+
+        # Add shadow negatives
+        prompt += """No cast shadow, no drop shadow, no ambient shadow, no halo, no outline shadow, no separation from background. no shading, no lighting, no realism, no depth, no shadows, no 3D effects.
+
+Strict vector artwork:
+solid flat color fills only,
+hard edges, sharp geometry,
+
+NO texture of any kind:
+no fabric texture, no grain, no noise,
+
+SVG / AI / EPS style,
+screen-print ready, textile CAD pattern,
+manufacturing-ready vector artwork.
+"""
+    else:
+        # NEW PROMPT STRUCTURE for rectangle, square, runner, round at ends, octagon
+        if style == 'Abstract' and session_id and style_configs:
+            abstract_config = style_configs.get('Abstract', {})
+            if abstract_config:
+                # Get randomized parameters
+                params = select_random_abstract_params(session_id, abstract_config)
+
+                if params:
+                    # Build enhanced prompt with abstract parameters
+                    style_description = (
+                        f"{params['fluidStyles']} in {params['patterns']} pattern "
+                        f"with {params['composition']} arrangement, "
+                        f"{params['density']} density, {params['scale']}, "
+                        f"{params['orientation']}, {params['spacing']}, "
+                        f"{params['arrangement']}"
+                    )
+
+                    prompt = f"Flat 2D vector illustration of {style_description} "
+                    prompt += f"rug design suitable for a {room}"
+                else:
+                    # Fallback if parameters unavailable
+                    prompt = f"Flat 2D vector illustration of {style} rug design suitable for a {room}"
+            else:
+                # Fallback if config not found
                 prompt = f"Flat 2D vector illustration of {style} rug design suitable for a {room}"
         else:
-            # Fallback if config not found
+            # Original logic for non-Abstract styles
             prompt = f"Flat 2D vector illustration of {style} rug design suitable for a {room}"
-    else:
-        # Original logic for non-Abstract styles
-        prompt = f"Flat 2D vector illustration of {style} rug design suitable for a {room}"
 
-    if shape:
-        prompt += f" in {shape} shape"
+        if shape:
+            prompt += f" in {shape_name} shape"
 
-    if detail:
-        prompt += f", {detail}"
+        if detail:
+            prompt += f", {detail}"
 
-    if color:
-        prompt += f", {color} color palette"
+        if color:
+            prompt += f", {color} color palette"
 
-    prompt += """.
+        prompt += """.
 
 Seamless repeating pattern, perfectly tileable,
 exact pattern repeat, edge-to-edge continuity,
